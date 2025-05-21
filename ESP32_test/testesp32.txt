@@ -1,0 +1,54 @@
+#include <Arduino.h>
+#include <SPI.h>
+#include <MFRC522.h>
+
+#define RST_PIN 22  // GPIO22 для RST
+#define SS_PIN 5    // GPIO5 для SDA
+
+MFRC522 mfrc522(SS_PIN, RST_PIN);  // Создаём экземпляр MFRC522
+
+// UID вашей метки (замените на реальный)
+byte myTagUID[] = {0x12, 0x34, 0x56, 0x78}; // Пример, замените на свой!
+
+void setup() {
+  Serial.begin(115200);
+  SPI.begin();          // Инициализация SPI
+  mfrc522.PCD_Init();   // Инициализация MFRC522
+  Serial.println("Ожидание метки...");
+}
+
+void loop() {
+  // Если новая метка не обнаружена - выходим
+  if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
+    delay(50);
+    return;
+  }
+
+  // Выводим UID обнаруженной метки
+  Serial.print("UID метки: ");
+  for (byte i = 0; i < mfrc522.uid.size; i++) {
+    Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
+    Serial.print(mfrc522.uid.uidByte[i], HEX);
+  }
+
+  // Проверяем совпадение с нашей меткой
+  bool accessGranted = true;
+  for (byte i = 0; i < 4; i++) { // Проверяем первые 4 байта
+    if (mfrc522.uid.uidByte[i] != myTagUID[i]) {
+      accessGranted = false;
+      break;
+    }
+  }
+
+  // Выводим результат
+  if (accessGranted) {
+    Serial.println("\nAccess complete");
+    // Здесь можно добавить действия при успехе
+    // например, включить реле, открыть дверь и т.д.
+  } else {
+    Serial.println("\nAccess denied");
+  }
+
+  // Останавливаем чтение
+  mfrc522.PICC_HaltA();
+}
